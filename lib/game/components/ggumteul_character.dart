@@ -6,9 +6,31 @@ import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
+/// 꿈틀 캐릭터의 상태
+enum GgumteulState {
+  idle,           // 유휴 상태
+  cheekPulling,   // 드래그 진행 중
+  cheekReturn,    // 드래그 종료 후 복귀 중
+  afterCheekPull, // 복귀 완료 후 대기 상태
+}
+
 class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameReference<FlameGame> {
-  late ui.Image _image;
+  // 상태별 이미지
+  late ui.Image _imageIdle;
+  late ui.Image _imageCheekPulling;
+  late ui.Image _imageCheekReturn1; // ggumteul_03.png
+  late ui.Image _imageCheekReturn2; // ggumteul_04.png
   bool _isLoaded = false;
+
+  // cheekReturn 애니메이션
+  static const double cheekReturnAnimInterval = 0.25; // 이미지 전환 간격 (초)
+  double _cheekReturnAnimTimer = 0.0;
+  bool _cheekReturnAnimFrame = false; // false: 03, true: 04
+
+  // 떨림 효과
+  final math.Random _random = math.Random();
+  final Vector2 _shakeOffset = Vector2.zero();
+  static const double shakeIntensity = 3.0; // 떨림 강도 (픽셀)
 
   // 이미지 원본 크기
   static const double originalWidth = 2700;
@@ -26,8 +48,17 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
   // 볼따구 위치 (화면 기준)
   late Vector2 cheekPosition;
 
+  // 상태 머신
+  GgumteulState _state = GgumteulState.idle;
+  GgumteulState get state => _state;
+
+  // 상태 타이머
+  static const double cheekReturnTime = 2.0; // cheekReturn 상태 지속 시간 (초)
+  static const double afterCheekPullTime = 2.0; // afterCheekPull 상태 지속 시간 (초)
+  double _cheekReturnTimer = 0.0;
+  double _afterCheekPullTimer = 0.0;
+
   // 드래그 관련
-  bool isDragging = false;
   Vector2 rawDragOffset = Vector2.zero(); // 실제 드래그 위치 (클램프 없이)
   Vector2 currentDragOffset = Vector2.zero(); // 클램프된 위치 (렌더링용)
   double maxDragDistance = 0;
@@ -41,12 +72,29 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
   static const double springStiffness = 800.0; // 스프링 강성 (높을수록 빠름)
   static const double damping = 25.0; // 감쇠 (낮을수록 오버슛 큼)
 
+  /// 현재 상태에 맞는 이미지 반환
+  ui.Image get _currentImage {
+    switch (_state) {
+      case GgumteulState.idle:
+        return _imageIdle;
+      case GgumteulState.cheekPulling:
+        return _imageCheekPulling;
+      case GgumteulState.cheekReturn:
+        return _cheekReturnAnimFrame ? _imageCheekReturn2 : _imageCheekReturn1;
+      case GgumteulState.afterCheekPull:
+        return _imageCheekReturn1; // ggumteul_03.png
+    }
+  }
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // 이미지 로드
-    _image = await _loadImage('assets/images/ggumteul/ggumteul_01.png');
+    // 상태별 이미지 로드
+    _imageIdle = await _loadImage('assets/images/ggumteul/ggumteul_01.png');
+    _imageCheekPulling = await _loadImage('assets/images/ggumteul/ggumteul_07.png');
+    _imageCheekReturn1 = await _loadImage('assets/images/ggumteul/ggumteul_03.png');
+    _imageCheekReturn2 = await _loadImage('assets/images/ggumteul/ggumteul_04.png');
     _isLoaded = true;
 
     // 화면 크기에 맞게 스케일 조정 (화면의 80% 크기로)
@@ -84,26 +132,73 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
   void update(double dt) {
     super.update(dt);
 
-    // 드래그 중이 아닐 때만 스프링 물리 적용
-    if (!isDragging && currentDragOffset.length > 0.01) {
-      // 스프링 힘: F = -k * x
-      final springForce = currentDragOffset * -springStiffness;
+    switch (_state) {
+      case GgumteulState.idle:
+        // 유휴 상태에서는 떨림 없음
+        _shakeOffset.setZero();
+        break;
 
-      // 감쇠력: F = -c * v
-      final dampingForce = velocity * -damping;
+      case GgumteulState.cheekPulling:
+        // 부들부들 떨림 효과
+        _shakeOffset.setValues(
+          (_random.nextDouble() - 0.5) * 2 * shakeIntensity,
+          (_random.nextDouble() - 0.5) * 2 * shakeIntensity,
+        );
+        break;
 
-      // 총 가속도
-      final acceleration = springForce + dampingForce;
+      case GgumteulState.cheekReturn:
+        // 복귀 상태에서는 떨림 없음
+        _shakeOffset.setZero();
 
-      // 속도 및 위치 업데이트
-      velocity += acceleration * dt;
-      currentDragOffset += velocity * dt;
+        // 이미지 애니메이션 (0.25초마다 전환)
+        _cheekReturnAnimTimer += dt;
+        if (_cheekReturnAnimTimer >= cheekReturnAnimInterval) {
+          _cheekReturnAnimTimer -= cheekReturnAnimInterval;
+          _cheekReturnAnimFrame = !_cheekReturnAnimFrame;
+        }
 
-      // 충분히 작아지면 정지
-      if (currentDragOffset.length < 0.5 && velocity.length < 1.0) {
-        currentDragOffset = Vector2.zero();
-        velocity = Vector2.zero();
-      }
+        // 스프링 물리 적용
+        if (currentDragOffset.length > 0.01) {
+          // 스프링 힘: F = -k * x
+          final springForce = currentDragOffset * -springStiffness;
+
+          // 감쇠력: F = -c * v
+          final dampingForce = velocity * -damping;
+
+          // 총 가속도
+          final acceleration = springForce + dampingForce;
+
+          // 속도 및 위치 업데이트
+          velocity += acceleration * dt;
+          currentDragOffset += velocity * dt;
+
+          // 충분히 작아지면 정지
+          if (currentDragOffset.length < 0.5 && velocity.length < 1.0) {
+            currentDragOffset = Vector2.zero();
+            velocity = Vector2.zero();
+          }
+        }
+
+        // 2초 후 afterCheekPull로 전이
+        _cheekReturnTimer += dt;
+        if (_cheekReturnTimer >= cheekReturnTime) {
+          _state = GgumteulState.afterCheekPull;
+          _cheekReturnTimer = 0.0;
+          _afterCheekPullTimer = 0.0;
+        }
+        break;
+
+      case GgumteulState.afterCheekPull:
+        // 떨림 없음
+        _shakeOffset.setZero();
+
+        // 2초 후 idle로 전이
+        _afterCheekPullTimer += dt;
+        if (_afterCheekPullTimer >= afterCheekPullTime) {
+          _state = GgumteulState.idle;
+          _afterCheekPullTimer = 0.0;
+        }
+        break;
     }
   }
 
@@ -116,7 +211,7 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
     final distanceFromCheek = (localPos - cheekPosition).length;
 
     if (distanceFromCheek < 200 * displayScale) {
-      isDragging = true;
+      _state = GgumteulState.cheekPulling;
       rawDragOffset = currentDragOffset.clone(); // 현재 위치에서 시작
       velocity = Vector2.zero(); // 속도 초기화
     }
@@ -126,7 +221,7 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
   void onDragUpdate(DragUpdateEvent event) {
     super.onDragUpdate(event);
 
-    if (!isDragging) return;
+    if (_state != GgumteulState.cheekPulling) return;
 
     // 실제 드래그 위치 누적 (클램프 없이)
     rawDragOffset += event.localDelta;
@@ -178,10 +273,23 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
   void onDragEnd(DragEndEvent event) {
     super.onDragEnd(event);
 
-    if (isDragging) {
-      isDragging = false;
+    if (_state == GgumteulState.cheekPulling) {
       rawDragOffset = Vector2.zero(); // 실제 드래그 위치 초기화
-      // 스프링 복귀는 update()에서 자동으로 처리됨
+
+      // 최대 범위의 20% 이상 당겼는지 확인
+      if (currentDragOffset.length >= maxDragDistance * 0.2) {
+        // 충분히 당겼으면 cheekReturn으로 전이
+        _state = GgumteulState.cheekReturn;
+        _cheekReturnTimer = 0.0; // 상태 타이머 초기화
+        _cheekReturnAnimTimer = 0.0; // 애니메이션 타이머 초기화
+        _cheekReturnAnimFrame = false; // 첫 번째 프레임부터 시작
+        // 스프링 복귀는 update()에서 자동으로 처리됨
+      } else {
+        // 충분히 당기지 않았으면 바로 idle로 복귀
+        _state = GgumteulState.idle;
+        currentDragOffset = Vector2.zero();
+        velocity = Vector2.zero();
+      }
     }
   }
 
@@ -191,10 +299,14 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
 
     if (!_isLoaded) return;
 
+    // 떨림 오프셋 적용
+    canvas.save();
+    canvas.translate(_shakeOffset.x, _shakeOffset.y);
+
     if (currentDragOffset.length < 0.1) {
       // 드래그하지 않을 때는 일반 이미지 렌더링
       canvas.drawImageRect(
-        _image,
+        _currentImage,
         Rect.fromLTWH(0, 0, originalWidth, originalHeight),
         Rect.fromLTWH(0, 0, displayWidth, displayHeight),
         Paint(),
@@ -203,6 +315,8 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
       // 드래그 중일 때는 메시 변형 적용
       _renderWithMeshDeform(canvas);
     }
+
+    canvas.restore();
   }
 
   void _renderWithMeshDeform(Canvas canvas) {
@@ -280,7 +394,7 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
     canvas.drawVertices(
       verticesObj,
       BlendMode.srcOver,
-      Paint()..shader = ui.ImageShader(_image, TileMode.clamp, TileMode.clamp, identityMatrix),
+      Paint()..shader = ui.ImageShader(_currentImage, TileMode.clamp, TileMode.clamp, identityMatrix),
     );
   }
 }
