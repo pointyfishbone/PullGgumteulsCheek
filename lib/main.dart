@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flame/game.dart';
 import 'package:flutter/services.dart';
-import 'game/ggumteul_game.dart';
+import 'package:gti_speaki/game/game_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,9 +21,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pull Ggumteul\'s cheek!',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.brown),
       ),
-      home: GameWidget(game: GgumteulGame()),
+      home: GameScreen(),
     );
   }
 }

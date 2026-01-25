@@ -73,6 +73,9 @@ class GgumteulCharacter extends PositionComponent
   static const double springStiffness = 1300.0; // 스프링 강성 (높을수록 빠름)
   static const double damping = 30.0; // 감쇠 (낮을수록 오버슛 큼)
 
+  // 볼따구 당김 횟수 카운터
+  int pullCount = 0;
+
   /// 현재 상태에 맞는 이미지 반환
   ui.Image get _currentImage {
     switch (_state) {
@@ -291,6 +294,8 @@ class GgumteulCharacter extends PositionComponent
         _cheekReturnAnimTimer = 0.0; // 애니메이션 타이머 초기화
         _cheekReturnAnimFrame = false; // 첫 번째 프레임부터 시작
         // 스프링 복귀는 update()에서 자동으로 처리됨
+        // 당김 횟수 카운터 증가
+        pullCount++;
       } else {
         // 충분히 당기지 않았으면 바로 idle로 복귀
         _state = GgumteulState.idle;
