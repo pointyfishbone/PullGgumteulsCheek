@@ -62,7 +62,7 @@ class GgumteulGame extends FlameGame {
     }
 
     overlays.add('pullCounter');
-    overlays.add('envSwitch');
+    overlays.add('settingsHud');
   }
 
   Future<void> toggleEnv(bool visible) async {

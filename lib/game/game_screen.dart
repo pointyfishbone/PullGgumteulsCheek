@@ -1,7 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import 'package:gti_speaki/game/ui/env_switch.dart';
 import 'package:gti_speaki/game/ui/pull_counter.dart';
+import 'package:gti_speaki/game/ui/settings_hud.dart';
 
 import 'ggumteul_game.dart';
 
@@ -23,11 +23,11 @@ class GameScreen extends StatelessWidget {
               child: PullCounter(game: game),
             );
           },
-          'envSwitch': (context, GgumteulGame game) {
+          'settingsHud': (context, GgumteulGame game) {
             return Positioned(
               right: 16,
               bottom: 16,
-              child: EnvSwitch(game: game),
+              child: SettingsHud(game: game),
             );
           },
         },
