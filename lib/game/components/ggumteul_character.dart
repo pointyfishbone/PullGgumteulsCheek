@@ -5,6 +5,7 @@ import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:gti_speaki/game/ggumteul_game.dart';
 
 /// 꿈틀 캐릭터의 상태
 enum GgumteulState {
@@ -16,6 +17,11 @@ enum GgumteulState {
 
 class GgumteulCharacter extends PositionComponent
     with DragCallbacks, HasGameReference<FlameGame> {
+  GgumteulCharacter({required this.game});
+
+  @override
+  final GgumteulGame game;
+
   // 상태별 이미지
   late ui.Image _imageIdle;
   late ui.Image _imageCheekPulling;
@@ -93,6 +99,9 @@ class GgumteulCharacter extends PositionComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+
+    // pullCount 로드
+    pullCount = game.prefs.getInt('pullCount') ?? 0;
 
     // 상태별 이미지 로드
     _imageIdle = await _loadImage('assets/images/ggumteul/ggumteul_01.png');
@@ -296,6 +305,7 @@ class GgumteulCharacter extends PositionComponent
         // 스프링 복귀는 update()에서 자동으로 처리됨
         // 당김 횟수 카운터 증가
         pullCount++;
+        game.prefs.setInt('pullCount', pullCount);
       } else {
         // 충분히 당기지 않았으면 바로 idle로 복귀
         _state = GgumteulState.idle;

@@ -3,9 +3,13 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'components/ggumteul_character.dart';
 
 class GgumteulGame extends FlameGame {
+  late final SharedPreferences _prefs;
+  SharedPreferences get prefs => _prefs;
+
   late final GgumteulCharacter _character;
   late final SpriteComponent _env1;
   late final SpriteComponent _env2;
@@ -20,6 +24,12 @@ class GgumteulGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+
+    // SharedPreferences 로드
+    _prefs = await SharedPreferences.getInstance();
+
+    // _envVisible 로드
+    _envVisible = _prefs.getBool('envVisible') ?? false;
 
     // 환경 이미지 로드
     final envSprite1 = await loadSprite('env/mir.png');
@@ -43,15 +53,21 @@ class GgumteulGame extends FlameGame {
     )..sprite?.paint.filterQuality = FilterQuality.high;
     _fitCover(_env2);
 
-    _character = GgumteulCharacter();
+    _character = GgumteulCharacter(game: this);
     await add(_character);
+
+    if (_envVisible) {
+      await add(_env1);
+      await add(_env2);
+    }
 
     overlays.add('pullCounter');
     overlays.add('envSwitch');
   }
 
-  void toggleEnv(bool visible) {
+  Future<void> toggleEnv(bool visible) async {
     _envVisible = visible;
+    await _prefs.setBool('envVisible', visible);
 
     if (visible && !_env1.isMounted) {
       add(_env1);
