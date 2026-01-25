@@ -8,13 +8,14 @@ import 'package:flutter/material.dart';
 
 /// 꿈틀 캐릭터의 상태
 enum GgumteulState {
-  idle,           // 유휴 상태
-  cheekPulling,   // 드래그 진행 중
-  cheekReturn,    // 드래그 종료 후 복귀 중
+  idle, // 유휴 상태
+  cheekPulling, // 드래그 진행 중
+  cheekReturn, // 드래그 종료 후 복귀 중
   afterCheekPull, // 복귀 완료 후 대기 상태
 }
 
-class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameReference<FlameGame> {
+class GgumteulCharacter extends PositionComponent
+    with DragCallbacks, HasGameReference<FlameGame> {
   // 상태별 이미지
   late ui.Image _imageIdle;
   late ui.Image _imageCheekPulling;
@@ -23,7 +24,7 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
   bool _isLoaded = false;
 
   // cheekReturn 애니메이션
-  static const double cheekReturnAnimInterval = 0.25; // 이미지 전환 간격 (초)
+  static const double cheekReturnAnimInterval = 0.12; // 이미지 전환 간격 (초)
   double _cheekReturnAnimTimer = 0.0;
   bool _cheekReturnAnimFrame = false; // false: 03, true: 04
 
@@ -53,8 +54,8 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
   GgumteulState get state => _state;
 
   // 상태 타이머
-  static const double cheekReturnTime = 2.0; // cheekReturn 상태 지속 시간 (초)
-  static const double afterCheekPullTime = 2.0; // afterCheekPull 상태 지속 시간 (초)
+  static const double cheekReturnTime = 1.5; // cheekReturn 상태 지속 시간 (초)
+  static const double afterCheekPullTime = 0.8; // afterCheekPull 상태 지속 시간 (초)
   double _cheekReturnTimer = 0.0;
   double _afterCheekPullTimer = 0.0;
 
@@ -69,8 +70,8 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
 
   // 스프링 물리 (오버슛이 있는 빠른 복귀)
   Vector2 velocity = Vector2.zero();
-  static const double springStiffness = 800.0; // 스프링 강성 (높을수록 빠름)
-  static const double damping = 25.0; // 감쇠 (낮을수록 오버슛 큼)
+  static const double springStiffness = 1300.0; // 스프링 강성 (높을수록 빠름)
+  static const double damping = 30.0; // 감쇠 (낮을수록 오버슛 큼)
 
   /// 현재 상태에 맞는 이미지 반환
   ui.Image get _currentImage {
@@ -92,14 +93,20 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
 
     // 상태별 이미지 로드
     _imageIdle = await _loadImage('assets/images/ggumteul/ggumteul_01.png');
-    _imageCheekPulling = await _loadImage('assets/images/ggumteul/ggumteul_07.png');
-    _imageCheekReturn1 = await _loadImage('assets/images/ggumteul/ggumteul_03.png');
-    _imageCheekReturn2 = await _loadImage('assets/images/ggumteul/ggumteul_04.png');
+    _imageCheekPulling = await _loadImage(
+      'assets/images/ggumteul/ggumteul_07.png',
+    );
+    _imageCheekReturn1 = await _loadImage(
+      'assets/images/ggumteul/ggumteul_03.png',
+    );
+    _imageCheekReturn2 = await _loadImage(
+      'assets/images/ggumteul/ggumteul_04.png',
+    );
     _isLoaded = true;
 
     // 화면 크기에 맞게 스케일 조정 (화면의 80% 크기로)
     final screenSize = game.size;
-    final targetSize = screenSize.y * 0.8;
+    final targetSize = math.min(screenSize.x, screenSize.y) * 0.8;
     displayScale = targetSize / originalHeight;
     displayWidth = originalWidth * displayScale;
     displayHeight = originalHeight * displayScale;
@@ -114,10 +121,7 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
     );
 
     // 볼따구 위치 계산 (화면 기준)
-    cheekPosition = Vector2(
-      cheekX * displayScale,
-      cheekY * displayScale,
-    );
+    cheekPosition = Vector2(cheekX * displayScale, cheekY * displayScale);
 
     // 최대 드래그 거리 (이미지 가로 길이의 25%)
     maxDragDistance = displayWidth * 0.25;
@@ -250,10 +254,13 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
       }
     } else {
       // 각도가 범위 밖: 원점에서 드래그 위치까지의 선과 경계선의 교점 계산
-      final boundaryAngle =
-          angle < angleRangeStart ? angleRangeStart : angleRangeEnd;
-      final boundaryDir =
-          Vector2(math.cos(boundaryAngle), math.sin(boundaryAngle));
+      final boundaryAngle = angle < angleRangeStart
+          ? angleRangeStart
+          : angleRangeEnd;
+      final boundaryDir = Vector2(
+        math.cos(boundaryAngle),
+        math.sin(boundaryAngle),
+      );
 
       // 드래그 벡터를 경계선 방향에 투영
       final projection = offset.dot(boundaryDir);
@@ -353,10 +360,7 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
         }
 
         vertices.add(Offset(vertexX, vertexY));
-        textureCoordinates.add(Offset(
-          tx * originalWidth,
-          ty * originalHeight,
-        ));
+        textureCoordinates.add(Offset(tx * originalWidth, ty * originalHeight));
       }
     }
 
@@ -394,7 +398,13 @@ class GgumteulCharacter extends PositionComponent with DragCallbacks, HasGameRef
     canvas.drawVertices(
       verticesObj,
       BlendMode.srcOver,
-      Paint()..shader = ui.ImageShader(_currentImage, TileMode.clamp, TileMode.clamp, identityMatrix),
+      Paint()
+        ..shader = ui.ImageShader(
+          _currentImage,
+          TileMode.clamp,
+          TileMode.clamp,
+          identityMatrix,
+        ),
     );
   }
 }
