@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:gti_speaki/game/ggumteul_game.dart';
 
@@ -23,11 +24,23 @@ class GgumteulCharacter extends PositionComponent
   final GgumteulGame game;
 
   // 상태별 이미지
-  late ui.Image _imageIdle;
+  late ui.Image _imageIdle1; // ggumteul_01.png
+  late ui.Image _imageIdle2; // ggumteul_02.png
   late ui.Image _imageCheekPulling;
   late ui.Image _imageCheekReturn1; // ggumteul_03.png
   late ui.Image _imageCheekReturn2; // ggumteul_04.png
   bool _isLoaded = false;
+
+  // idle 오디오 관련
+  static const double idleAudioIntervalMin = 3.0; // 최소 대기 시간 (초)
+  static const double idleAudioIntervalMax = 8.0; // 최대 대기 시간 (초)
+  static const double idleAnimInterval = 0.12; // 이미지 전환 간격 (초, 120ms)
+  double _idleAudioTimer = 0.0;
+  double _nextIdleAudioTime = 0.0;
+  bool _isPlayingIdleAudio = false;
+  double _idleAnimTimer = 0.0;
+  bool _idleAnimFrame = false; // false: 01, true: 02
+  AudioPlayer? _idleAudioPlayer; // 현재 재생 중인 오디오 플레이어
 
   // cheekReturn 애니메이션
   static const double cheekReturnAnimInterval = 0.12; // 이미지 전환 간격 (초)
@@ -86,7 +99,11 @@ class GgumteulCharacter extends PositionComponent
   ui.Image get _currentImage {
     switch (_state) {
       case GgumteulState.idle:
-        return _imageIdle;
+        // 오디오 재생 중이면 애니메이션 프레임 사용
+        if (_isPlayingIdleAudio) {
+          return _idleAnimFrame ? _imageIdle2 : _imageIdle1;
+        }
+        return _imageIdle1;
       case GgumteulState.cheekPulling:
         return _imageCheekPulling;
       case GgumteulState.cheekReturn:
@@ -104,7 +121,8 @@ class GgumteulCharacter extends PositionComponent
     pullCount = game.prefs.getInt('pullCount') ?? 0;
 
     // 상태별 이미지 로드
-    _imageIdle = await _loadImage('assets/images/ggumteul/ggumteul_01.png');
+    _imageIdle1 = await _loadImage('assets/images/ggumteul/ggumteul_01.png');
+    _imageIdle2 = await _loadImage('assets/images/ggumteul/ggumteul_02.png');
     _imageCheekPulling = await _loadImage(
       'assets/images/ggumteul/ggumteul_07.png',
     );
@@ -115,6 +133,9 @@ class GgumteulCharacter extends PositionComponent
       'assets/images/ggumteul/ggumteul_04.png',
     );
     _isLoaded = true;
+
+    // idle 오디오 타이머 초기화 (3~8초 랜덤)
+    _nextIdleAudioTime = _random.nextDouble() * (idleAudioIntervalMax - idleAudioIntervalMin) + idleAudioIntervalMin;
 
     // 화면 크기에 맞게 스케일 조정 (화면의 80% 크기로)
     final screenSize = game.size;
@@ -144,6 +165,41 @@ class GgumteulCharacter extends PositionComponent
     return data;
   }
 
+  /// 랜덤 idle 오디오 재생
+  void _playRandomIdleAudio() {
+    _isPlayingIdleAudio = true;
+    _idleAnimTimer = 0.0;
+    _idleAnimFrame = false;
+
+    // ujaja1.wav 또는 ujaja2.wav 중 랜덤 선택
+    final audioFile = _random.nextBool() ? 'ggumteul/ujaja1.wav' : 'ggumteul/ujaja2.wav';
+
+    FlameAudio.play(audioFile).then((player) {
+      _idleAudioPlayer = player;
+      player.onPlayerComplete.listen((_) {
+        _onIdleAudioComplete();
+      });
+    });
+  }
+
+  /// idle 오디오 중지
+  void _stopIdleAudio() {
+    _idleAudioPlayer?.stop();
+    _idleAudioPlayer = null;
+    _isPlayingIdleAudio = false;
+    _idleAnimFrame = false;
+    _idleAudioTimer = 0.0;
+  }
+
+  /// idle 오디오 재생 완료 시 호출
+  void _onIdleAudioComplete() {
+    _idleAudioPlayer = null;
+    _isPlayingIdleAudio = false;
+    _idleAnimFrame = false;
+    // 다음 오디오 재생까지의 시간 설정 (3~8초 랜덤)
+    _nextIdleAudioTime = _random.nextDouble() * (idleAudioIntervalMax - idleAudioIntervalMin) + idleAudioIntervalMin;
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -152,6 +208,22 @@ class GgumteulCharacter extends PositionComponent
       case GgumteulState.idle:
         // 유휴 상태에서는 떨림 없음
         _shakeOffset.setZero();
+
+        if (_isPlayingIdleAudio) {
+          // 오디오 재생 중: 이미지 애니메이션 (120ms 간격)
+          _idleAnimTimer += dt;
+          if (_idleAnimTimer >= idleAnimInterval) {
+            _idleAnimTimer -= idleAnimInterval;
+            _idleAnimFrame = !_idleAnimFrame;
+          }
+        } else {
+          // 오디오 미재생: 타이머 체크
+          _idleAudioTimer += dt;
+          if (_idleAudioTimer >= _nextIdleAudioTime) {
+            _idleAudioTimer = 0.0;
+            _playRandomIdleAudio();
+          }
+        }
         break;
 
       case GgumteulState.cheekPulling:
@@ -227,6 +299,9 @@ class GgumteulCharacter extends PositionComponent
     final distanceFromCheek = (localPos - cheekPosition).length;
 
     if (distanceFromCheek < 200 * displayScale) {
+      // idle 오디오 중지
+      _stopIdleAudio();
+
       _state = GgumteulState.cheekPulling;
       rawDragOffset = currentDragOffset.clone(); // 현재 위치에서 시작
       velocity = Vector2.zero(); // 속도 초기화
