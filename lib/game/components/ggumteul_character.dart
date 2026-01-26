@@ -57,17 +57,23 @@ class GgumteulCharacter extends PositionComponent
   static const double originalWidth = 2700;
   static const double originalHeight = 2700;
 
-  // 볼따구 위치 (원본 이미지 기준)
+  // 볼따구 위치 - 드래그 감지용 (원본 이미지 기준)
   static const double cheekX = 2500;
   static const double cheekY = 1500;
+
+  // 메시 변형 중심점 (원본 이미지 기준)
+  static const double deformCenterX = 2620;
+  static const double deformCenterY = 1448;
 
   // 화면에 표시될 크기 (스케일 조정)
   late double displayScale;
   late double displayWidth;
   late double displayHeight;
 
-  // 볼따구 위치 (화면 기준)
+  // 볼따구 위치 (화면 기준) - 드래그 감지용
   late Vector2 cheekPosition;
+  // 메시 변형 중심점 (화면 기준)
+  late Vector2 deformCenter;
 
   // 상태 머신
   GgumteulState _state = GgumteulState.idle;
@@ -90,6 +96,19 @@ class GgumteulCharacter extends PositionComponent
   Vector2 velocity = Vector2.zero();
   static const double springStiffness = 1300.0; // 스프링 강성 (높을수록 빠름)
   static const double damping = 30.0; // 감쇠 (낮을수록 오버슛 큼)
+  static const double maxPhysicsDt = 0.016; // 물리 시뮬레이션 최대 dt (약 60fps)
+  static const double maxDivergenceDistance =
+      2.0; // 발산 감지 배수 (maxDragDistance 기준)
+
+  // 메시 변형 최적화 (미리 할당)
+  static const int meshGridSize = 20; // 그리드 크기 (20 -> 15로 축소)
+  static const int meshVertexCount = (meshGridSize + 1) * (meshGridSize + 1);
+  static const int meshIndexCount = meshGridSize * meshGridSize * 6;
+  late Float32List _meshVertices;
+  late Float32List _meshTexCoords;
+  late Uint16List _meshIndices;
+  late Float64List _identityMatrix;
+  late double _meshInfluenceRadius;
 
   // 볼따구 당김 횟수 카운터
   int pullCount = 0;
@@ -161,11 +180,61 @@ class GgumteulCharacter extends PositionComponent
       (screenSize.y - displayHeight) / 2,
     );
 
-    // 볼따구 위치 계산 (화면 기준)
+    // 볼따구 위치 계산 (화면 기준) - 드래그 감지용
     cheekPosition = Vector2(cheekX * displayScale, cheekY * displayScale);
+    // 메시 변형 중심점 계산 (화면 기준)
+    deformCenter = Vector2(deformCenterX * displayScale, deformCenterY * displayScale);
 
     // 최대 드래그 거리 (이미지 가로 길이의 25%)
     maxDragDistance = displayWidth * 0.25;
+
+    // 메시 데이터 미리 할당
+    _initMeshData();
+  }
+
+  /// 메시 데이터 초기화 (성능 최적화)
+  void _initMeshData() {
+    _meshVertices = Float32List(meshVertexCount * 2);
+    _meshTexCoords = Float32List(meshVertexCount * 2);
+    _meshIndices = Uint16List(meshIndexCount);
+    _meshInfluenceRadius = displayWidth * 0.3;
+
+    // Identity matrix 캐시
+    _identityMatrix = Float64List(16);
+    _identityMatrix[0] = 1.0;
+    _identityMatrix[5] = 1.0;
+    _identityMatrix[10] = 1.0;
+    _identityMatrix[15] = 1.0;
+
+    // 텍스처 좌표와 인덱스는 변하지 않으므로 미리 계산
+    int vertexIdx = 0;
+    for (int y = 0; y <= meshGridSize; y++) {
+      for (int x = 0; x <= meshGridSize; x++) {
+        final tx = x / meshGridSize;
+        final ty = y / meshGridSize;
+        _meshTexCoords[vertexIdx] = tx * originalWidth;
+        _meshTexCoords[vertexIdx + 1] = ty * originalHeight;
+        vertexIdx += 2;
+      }
+    }
+
+    // 인덱스 미리 계산
+    int indexIdx = 0;
+    for (int y = 0; y < meshGridSize; y++) {
+      for (int x = 0; x < meshGridSize; x++) {
+        final topLeft = y * (meshGridSize + 1) + x;
+        final topRight = topLeft + 1;
+        final bottomLeft = (y + 1) * (meshGridSize + 1) + x;
+        final bottomRight = bottomLeft + 1;
+
+        _meshIndices[indexIdx++] = topLeft;
+        _meshIndices[indexIdx++] = bottomLeft;
+        _meshIndices[indexIdx++] = topRight;
+        _meshIndices[indexIdx++] = topRight;
+        _meshIndices[indexIdx++] = bottomLeft;
+        _meshIndices[indexIdx++] = bottomRight;
+      }
+    }
   }
 
   Future<ui.Image> _loadImage(String path) async {
@@ -290,20 +359,34 @@ class GgumteulCharacter extends PositionComponent
           _cheekReturnAnimFrame = !_cheekReturnAnimFrame;
         }
 
-        // 스프링 물리 적용
+        // 스프링 물리 적용 (sub-stepping으로 안정성 확보)
         if (currentDragOffset.length > 0.01) {
-          // 스프링 힘: F = -k * x
-          final springForce = currentDragOffset * -springStiffness;
+          // Sub-stepping: dt가 크면 여러 번 나눠서 계산
+          double remainingDt = dt;
+          while (remainingDt > 0) {
+            final stepDt = math.min(remainingDt, maxPhysicsDt);
+            remainingDt -= stepDt;
 
-          // 감쇠력: F = -c * v
-          final dampingForce = velocity * -damping;
+            // 스프링 힘: F = -k * x
+            final springForce = currentDragOffset * -springStiffness;
 
-          // 총 가속도
-          final acceleration = springForce + dampingForce;
+            // 감쇠력: F = -c * v
+            final dampingForce = velocity * -damping;
 
-          // 속도 및 위치 업데이트
-          velocity += acceleration * dt;
-          currentDragOffset += velocity * dt;
+            // 총 가속도
+            final acceleration = springForce + dampingForce;
+
+            // Semi-implicit Euler: 속도 먼저 업데이트 후 위치 업데이트 (더 안정적)
+            velocity += acceleration * stepDt;
+            currentDragOffset += velocity * stepDt;
+          }
+
+          // 발산 감지: 원래 드래그 거리보다 훨씬 멀어지면 리셋
+          if (currentDragOffset.length >
+              maxDragDistance * maxDivergenceDistance) {
+            currentDragOffset = Vector2.zero();
+            velocity = Vector2.zero();
+          }
 
           // 충분히 작아지면 정지
           if (currentDragOffset.length < 0.5 && velocity.length < 1.0) {
@@ -457,73 +540,45 @@ class GgumteulCharacter extends PositionComponent
   }
 
   void _renderWithMeshDeform(Canvas canvas) {
-    const int gridWidth = 20;
-    const int gridHeight = 20;
-
-    final vertices = <Offset>[];
-    final textureCoordinates = <Offset>[];
-    final indices = <int>[];
-
-    // 드래그 영향 반경
-    final influenceRadius = displayWidth * 0.3;
-
-    for (int y = 0; y <= gridHeight; y++) {
-      for (int x = 0; x <= gridWidth; x++) {
-        final tx = x / gridWidth;
-        final ty = y / gridHeight;
+    // 정점 위치만 매 프레임 업데이트 (텍스처 좌표와 인덱스는 캐시됨)
+    int vertexIdx = 0;
+    for (int y = 0; y <= meshGridSize; y++) {
+      for (int x = 0; x <= meshGridSize; x++) {
+        final tx = x / meshGridSize;
+        final ty = y / meshGridSize;
 
         var vertexX = tx * displayWidth;
         var vertexY = ty * displayHeight;
 
-        // 볼따구로부터의 거리 계산
-        final dx = vertexX - cheekPosition.x;
-        final dy = vertexY - cheekPosition.y;
-        final distance = math.sqrt(dx * dx + dy * dy);
+        // 메시 변형 중심점으로부터의 거리 계산
+        final dx = vertexX - deformCenter.x;
+        final dy = vertexY - deformCenter.y;
+        final distanceSq = dx * dx + dy * dy;
+        final influenceRadiusSq = _meshInfluenceRadius * _meshInfluenceRadius;
 
         // 거리에 따른 영향도 계산 (가까울수록 강하게)
-        if (distance < influenceRadius) {
-          final influence = 1.0 - (distance / influenceRadius);
+        if (distanceSq < influenceRadiusSq) {
+          final distance = math.sqrt(distanceSq);
+          final influence = 1.0 - (distance / _meshInfluenceRadius);
           final deformFactor = influence * influence; // 비선형 감쇠
 
           vertexX += currentDragOffset.x * deformFactor;
           vertexY += currentDragOffset.y * deformFactor;
         }
 
-        vertices.add(Offset(vertexX, vertexY));
-        textureCoordinates.add(Offset(tx * originalWidth, ty * originalHeight));
+        _meshVertices[vertexIdx] = vertexX;
+        _meshVertices[vertexIdx + 1] = vertexY;
+        vertexIdx += 2;
       }
     }
 
-    // 인덱스 생성 (삼각형 메시)
-    for (int y = 0; y < gridHeight; y++) {
-      for (int x = 0; x < gridWidth; x++) {
-        final topLeft = y * (gridWidth + 1) + x;
-        final topRight = topLeft + 1;
-        final bottomLeft = (y + 1) * (gridWidth + 1) + x;
-        final bottomRight = bottomLeft + 1;
-
-        // 첫 번째 삼각형
-        indices.addAll([topLeft, bottomLeft, topRight]);
-        // 두 번째 삼각형
-        indices.addAll([topRight, bottomLeft, bottomRight]);
-      }
-    }
-
-    // Vertices 객체 생성 및 렌더링
+    // Vertices 객체 생성 (캐시된 배열 사용)
     final verticesObj = ui.Vertices.raw(
       ui.VertexMode.triangles,
-      Float32List.fromList(vertices.expand((v) => [v.dx, v.dy]).toList()),
-      textureCoordinates: Float32List.fromList(
-        textureCoordinates.expand((v) => [v.dx, v.dy]).toList(),
-      ),
-      indices: Uint16List.fromList(indices),
+      _meshVertices,
+      textureCoordinates: _meshTexCoords,
+      indices: _meshIndices,
     );
-
-    final identityMatrix = Float64List(16)
-      ..[0] = 1.0
-      ..[5] = 1.0
-      ..[10] = 1.0
-      ..[15] = 1.0;
 
     canvas.drawVertices(
       verticesObj,
@@ -533,7 +588,7 @@ class GgumteulCharacter extends PositionComponent
           _currentImage,
           TileMode.clamp,
           TileMode.clamp,
-          identityMatrix,
+          _identityMatrix,
         ),
     );
   }
