@@ -39,8 +39,16 @@ class _SettingsHudState extends State<SettingsHud> {
         child: IntrinsicWidth(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // Screen On 스위치
+              Text(
+                'v ${widget.game.packageInfo.version}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
               if (Platform.isAndroid)
                 Row(
                   mainAxisSize: MainAxisSize.max,

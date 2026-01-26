@@ -3,12 +3,15 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'components/ggumteul_character.dart';
 
 class GgumteulGame extends FlameGame {
   late final SharedPreferences _prefs;
   SharedPreferences get prefs => _prefs;
+  late final PackageInfo _packageInfo;
+  PackageInfo get packageInfo => _packageInfo;
 
   late final GgumteulCharacter _character;
   late final SpriteComponent _env1;
@@ -27,6 +30,9 @@ class GgumteulGame extends FlameGame {
 
     // SharedPreferences 로드
     _prefs = await SharedPreferences.getInstance();
+
+    // PackageInfo 로드
+    _packageInfo = await PackageInfo.fromPlatform();
 
     // _envVisible 로드
     _envVisible = _prefs.getBool('envVisible') ?? false;
