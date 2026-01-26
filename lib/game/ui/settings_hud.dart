@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:gti_speaki/game/ggumteul_game.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -39,28 +41,29 @@ class _SettingsHudState extends State<SettingsHud> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Screen On 스위치
-              Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Screen On',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  Switch(
-                    value: _screenOnValue,
-                    onChanged: (v) {
-                      setState(() => _screenOnValue = v);
-                      widget.game.prefs.setBool('screenOn', v);
-                      if (v) {
-                        WakelockPlus.enable();
-                      } else {
-                        WakelockPlus.disable();
-                      }
-                    },
-                  ),
-                ],
-              ),
+              if (Platform.isAndroid)
+                Row(
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Screen On',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    Switch(
+                      value: _screenOnValue,
+                      onChanged: (v) {
+                        setState(() => _screenOnValue = v);
+                        widget.game.prefs.setBool('screenOn', v);
+                        if (v) {
+                          WakelockPlus.enable();
+                        } else {
+                          WakelockPlus.disable();
+                        }
+                      },
+                    ),
+                  ],
+                ),
               // Environment 스위치
               Row(
                 mainAxisSize: MainAxisSize.max,
