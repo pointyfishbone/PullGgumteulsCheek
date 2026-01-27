@@ -5,7 +5,8 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'components/ggumteul_character.dart';
+import 'components/main_character.dart';
+import 'models/characters.dart' as chars;
 
 class GgumteulGame extends FlameGame {
   late final SharedPreferences _prefs;
@@ -13,7 +14,7 @@ class GgumteulGame extends FlameGame {
   late final PackageInfo _packageInfo;
   PackageInfo get packageInfo => _packageInfo;
 
-  late final GgumteulCharacter _character;
+  late final MainCharacter _character;
   late final SpriteComponent _env1;
   late final SpriteComponent _env2;
 
@@ -59,7 +60,7 @@ class GgumteulGame extends FlameGame {
     )..sprite?.paint.filterQuality = FilterQuality.high;
     _fitCover(_env2);
 
-    _character = GgumteulCharacter(game: this);
+    _character = MainCharacter(game: this, characterInfo: chars.Characters.defaultCharacter);
     await add(_character);
 
     if (_envVisible) {

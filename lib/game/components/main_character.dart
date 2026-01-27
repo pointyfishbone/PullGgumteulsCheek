@@ -8,58 +8,35 @@ import 'package:flame/game.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:gti_speaki/game/ggumteul_game.dart';
+import 'package:gti_speaki/game/models/character_info.dart';
 
-/// 오디오 파일 정보 (파일 이름에서 재생 시간 포함)
-class AudioInfo {
-  final String fileName;
-  final Duration duration;
-
-  const AudioInfo(this.fileName, this.duration);
-}
-
-/// 오디오 에셋 정보
-class GgumteulAudio {
-  static const idleAudio1 = AudioInfo(
-    'ggumteul/idle1.wav',
-    Duration(milliseconds: 2159),
-  );
-  static const idleAudio2 = AudioInfo(
-    'ggumteul/idle2.wav',
-    Duration(milliseconds: 1621),
-  );
-  static const returnAudio1 = AudioInfo(
-    'ggumteul/return1.wav',
-    Duration(milliseconds: 869),
-  );
-
-  static List<String> get allFiles => [
-    idleAudio1.fileName,
-    idleAudio2.fileName,
-    returnAudio1.fileName,
-  ];
-}
-
-/// 꿈틀 캐릭터의 상태
-enum GgumteulState {
+/// 캐릭터의 상태
+enum CharacterState {
   idle, // 유휴 상태
   cheekPulling, // 드래그 진행 중
   cheekReturn, // 드래그 종료 후 복귀 중
   afterCheekPull, // 복귀 완료 후 대기 상태
 }
 
-class GgumteulCharacter extends PositionComponent
+class MainCharacter extends PositionComponent
     with DragCallbacks, HasGameReference<FlameGame> {
-  GgumteulCharacter({required this.game});
+  MainCharacter({
+    required this.game,
+    required this.characterInfo,
+  });
 
   @override
   final GgumteulGame game;
 
+  /// 캐릭터 정보
+  final CharacterInfo characterInfo;
+
   // 상태별 이미지
-  late ui.Image _imageIdle1; // ggumteul_01.png
-  late ui.Image _imageIdle2; // ggumteul_02.png
+  late ui.Image _imageIdle1;
+  late ui.Image _imageIdle2;
   late ui.Image _imageCheekPulling;
-  late ui.Image _imageCheekReturn1; // ggumteul_03.png
-  late ui.Image _imageCheekReturn2; // ggumteul_04.png
+  late ui.Image _imageCheekReturn1;
+  late ui.Image _imageCheekReturn2;
   bool _isLoaded = false;
 
   // idle 오디오 관련
@@ -86,17 +63,17 @@ class GgumteulCharacter extends PositionComponent
   final Vector2 _shakeOffset = Vector2.zero();
   static const double shakeIntensity = 3.0; // 떨림 강도 (픽셀)
 
-  // 이미지 원본 크기
-  static const double originalWidth = 900;
-  static const double originalHeight = 900;
+  // 이미지 원본 크기 (CharacterInfo에서 가져옴)
+  double get originalWidth => characterInfo.imageMeta.width;
+  double get originalHeight => characterInfo.imageMeta.height;
 
-  // 볼따구 위치 - 드래그 감지용 (원본 이미지 기준)
-  static const double cheekX = 833.33;
-  static const double cheekY = 500;
+  // 볼따구 위치 - 드래그 감지용 (원본 이미지 기준, CharacterInfo에서 가져옴)
+  double get cheekX => characterInfo.imageMeta.cheekX;
+  double get cheekY => characterInfo.imageMeta.cheekY;
 
-  // 메시 변형 중심점 (원본 이미지 기준)
-  static const double deformCenterX = 873.33;
-  static const double deformCenterY = 482.67;
+  // 메시 변형 중심점 (원본 이미지 기준, CharacterInfo에서 가져옴)
+  double get deformCenterX => characterInfo.imageMeta.deformCenterX;
+  double get deformCenterY => characterInfo.imageMeta.deformCenterY;
 
   // 화면에 표시될 크기 (스케일 조정)
   late double displayScale;
@@ -109,8 +86,8 @@ class GgumteulCharacter extends PositionComponent
   late Vector2 deformCenter;
 
   // 상태 머신
-  GgumteulState _state = GgumteulState.idle;
-  GgumteulState get state => _state;
+  CharacterState _state = CharacterState.idle;
+  CharacterState get state => _state;
 
   // 상태 타이머
   static const double afterCheekPullTime = 0.8; // afterCheekPull 상태 지속 시간 (초)
@@ -149,18 +126,18 @@ class GgumteulCharacter extends PositionComponent
   /// 현재 상태에 맞는 이미지 반환
   ui.Image get _currentImage {
     switch (_state) {
-      case GgumteulState.idle:
+      case CharacterState.idle:
         // 오디오 재생 중이면 애니메이션 프레임 사용
         if (_isPlayingIdleAudio) {
           return _idleAnimFrame ? _imageIdle2 : _imageIdle1;
         }
         return _imageIdle1;
-      case GgumteulState.cheekPulling:
+      case CharacterState.cheekPulling:
         return _imageCheekPulling;
-      case GgumteulState.cheekReturn:
+      case CharacterState.cheekReturn:
         return _cheekReturnAnimFrame ? _imageCheekReturn2 : _imageCheekReturn1;
-      case GgumteulState.afterCheekPull:
-        return _imageCheekReturn1; // ggumteul_03.png
+      case CharacterState.afterCheekPull:
+        return _imageCheekReturn1;
     }
   }
 
@@ -171,22 +148,16 @@ class GgumteulCharacter extends PositionComponent
     // pullCount 로드
     pullCount = game.prefs.getInt('pullCount') ?? 0;
 
-    // 상태별 이미지 로드
-    _imageIdle1 = await _loadImage('assets/images/ggumteul/ggumteul_01.png');
-    _imageIdle2 = await _loadImage('assets/images/ggumteul/ggumteul_02.png');
-    _imageCheekPulling = await _loadImage(
-      'assets/images/ggumteul/ggumteul_07.png',
-    );
-    _imageCheekReturn1 = await _loadImage(
-      'assets/images/ggumteul/ggumteul_03.png',
-    );
-    _imageCheekReturn2 = await _loadImage(
-      'assets/images/ggumteul/ggumteul_04.png',
-    );
+    // 상태별 이미지 로드 (CharacterInfo에서 경로 가져오기)
+    _imageIdle1 = await _loadImage(characterInfo.assets.idle1);
+    _imageIdle2 = await _loadImage(characterInfo.assets.idle2);
+    _imageCheekPulling = await _loadImage(characterInfo.assets.pulling);
+    _imageCheekReturn1 = await _loadImage(characterInfo.assets.return1);
+    _imageCheekReturn2 = await _loadImage(characterInfo.assets.return2);
     _isLoaded = true;
 
     // 오디오 프리로드 (lowLatency 모드를 위해 미리 로드)
-    await FlameAudio.audioCache.loadAll(GgumteulAudio.allFiles);
+    await FlameAudio.audioCache.loadAll(characterInfo.audio.allFiles);
 
     // idle 오디오 타이머 초기화 (3~8초 랜덤)
     _nextIdleAudioTime =
@@ -270,7 +241,7 @@ class GgumteulCharacter extends PositionComponent
   }
 
   Future<ui.Image> _loadImage(String path) async {
-    final data = await game.images.load(path.replaceAll('assets/images/', ''));
+    final data = await game.images.load(path);
     return data;
   }
 
@@ -282,8 +253,8 @@ class GgumteulCharacter extends PositionComponent
 
     // idle1 또는 idle2 중 랜덤 선택
     final audio = _random.nextBool()
-        ? GgumteulAudio.idleAudio1
-        : GgumteulAudio.idleAudio2;
+        ? characterInfo.audio.idle1
+        : characterInfo.audio.idle2;
 
     // lowLatency 모드로 재생 (프리로드된 오디오 사용)
     _idleAudioPlayer = await FlameAudio.play(audio.fileName);
@@ -321,12 +292,12 @@ class GgumteulCharacter extends PositionComponent
 
     // lowLatency 모드로 재생
     _returnAudioPlayer = await FlameAudio.play(
-      GgumteulAudio.returnAudio1.fileName,
+      characterInfo.audio.return1.fileName,
     );
 
     // 파일 이름에 기록된 재생 시간으로 완료 감지
     _returnAudioTimer = async.Timer(
-      GgumteulAudio.returnAudio1.duration,
+      characterInfo.audio.return1.duration,
       _onReturnAudioComplete,
     );
   }
@@ -344,8 +315,8 @@ class GgumteulCharacter extends PositionComponent
     _returnAudioTimer = null;
     _returnAudioPlayer = null;
     // cheekReturn 상태에서 returnAudio가 끝나면 afterCheekPull로 전이
-    if (_state == GgumteulState.cheekReturn) {
-      _state = GgumteulState.afterCheekPull;
+    if (_state == CharacterState.cheekReturn) {
+      _state = CharacterState.afterCheekPull;
       _afterCheekPullTimer = 0.0;
     }
   }
@@ -355,7 +326,7 @@ class GgumteulCharacter extends PositionComponent
     super.update(dt);
 
     switch (_state) {
-      case GgumteulState.idle:
+      case CharacterState.idle:
         // 유휴 상태에서는 떨림 없음
         _shakeOffset.setZero();
 
@@ -376,7 +347,7 @@ class GgumteulCharacter extends PositionComponent
         }
         break;
 
-      case GgumteulState.cheekPulling:
+      case CharacterState.cheekPulling:
         // 부들부들 떨림 효과
         _shakeOffset.setValues(
           (_random.nextDouble() - 0.5) * 2 * shakeIntensity,
@@ -384,7 +355,7 @@ class GgumteulCharacter extends PositionComponent
         );
         break;
 
-      case GgumteulState.cheekReturn:
+      case CharacterState.cheekReturn:
         // 복귀 상태에서는 떨림 없음
         _shakeOffset.setZero();
 
@@ -433,14 +404,14 @@ class GgumteulCharacter extends PositionComponent
         // afterCheekPull로의 전이는 returnAudio 완료 시 _onReturnAudioComplete()에서 처리
         break;
 
-      case GgumteulState.afterCheekPull:
+      case CharacterState.afterCheekPull:
         // 떨림 없음
         _shakeOffset.setZero();
 
         // 2초 후 idle로 전이
         _afterCheekPullTimer += dt;
         if (_afterCheekPullTimer >= afterCheekPullTime) {
-          _state = GgumteulState.idle;
+          _state = CharacterState.idle;
           _afterCheekPullTimer = 0.0;
         }
         break;
@@ -460,7 +431,7 @@ class GgumteulCharacter extends PositionComponent
       _stopIdleAudio();
       _stopReturnAudio();
 
-      _state = GgumteulState.cheekPulling;
+      _state = CharacterState.cheekPulling;
       rawDragOffset = currentDragOffset.clone(); // 현재 위치에서 시작
       velocity = Vector2.zero(); // 속도 초기화
     }
@@ -470,7 +441,7 @@ class GgumteulCharacter extends PositionComponent
   void onDragUpdate(DragUpdateEvent event) {
     super.onDragUpdate(event);
 
-    if (_state != GgumteulState.cheekPulling) return;
+    if (_state != CharacterState.cheekPulling) return;
 
     // 실제 드래그 위치 누적 (클램프 없이)
     rawDragOffset += event.localDelta;
@@ -525,13 +496,13 @@ class GgumteulCharacter extends PositionComponent
   void onDragEnd(DragEndEvent event) {
     super.onDragEnd(event);
 
-    if (_state == GgumteulState.cheekPulling) {
+    if (_state == CharacterState.cheekPulling) {
       rawDragOffset = Vector2.zero(); // 실제 드래그 위치 초기화
 
       // 최대 범위의 20% 이상 당겼는지 확인
       if (currentDragOffset.length >= maxDragDistance * 0.2) {
         // 충분히 당겼으면 cheekReturn으로 전이
-        _state = GgumteulState.cheekReturn;
+        _state = CharacterState.cheekReturn;
         _cheekReturnAnimTimer = 0.0; // 애니메이션 타이머 초기화
         _cheekReturnAnimFrame = false; // 첫 번째 프레임부터 시작
         // 스프링 복귀는 update()에서 자동으로 처리됨
@@ -542,7 +513,7 @@ class GgumteulCharacter extends PositionComponent
         _playReturnAudio();
       } else {
         // 충분히 당기지 않았으면 바로 idle로 복귀
-        _state = GgumteulState.idle;
+        _state = CharacterState.idle;
         currentDragOffset = Vector2.zero();
         velocity = Vector2.zero();
       }
