@@ -1,16 +1,32 @@
-# gti_speaki
+# 꿈틀이 볼따구 잡아당기기
+Soop 버튜버 [꿈틀](https://www.sooplive.co.kr/station/wggumteuli)님의 팬 어플리케이션입니다.
+안드로이드와 윈도우용으로 배포됩니다.
 
-A new Flutter project.
+## 소개
+- 오직 손맛을 즐기기 위한 어플입니다.
+  - 기능이라곤 볼따구 잡아당기는 것 밖에 없습니다.
+- 안드로이드 버전을 압도적으로 추천합니다.
+  - 손가락으로 해야 손맛이 더 좋습니다!
+  - 윈도우버전 및 앱플레이어에서는 프레임 드랍이 있습니다.
+- 볼따구를 마구 잡아당겨 봅시다!
+  - 잡아당긴 카운트 숫자를 보면 흐뭇해집니다.
+- 궁금하면 "Environment"를 켜봅시다.
+- 안드로이드에서 "Screen on" 해놓으면 화면 안꺼진 상태로 드문드문 꿈틀이의 옹알이를 들려줍니다.
+  - 환경소음용으로 쓸 수 있습니다.
+- apk 설치용이라 찝찝하실 수 있는데, 제 시청자 인생 전부를 걸고 멀웨어 아닙니다!
 
-## Getting Started
+## 업데이트 내역
 
-This project is a starting point for a Flutter application.
+- v0.1.5
+  - 캐릭터 애니메이션 성능이 조금 더 최적화되었습니다.
+  - 음성 재생 딜레이가 줄었습니다.
 
-A few resources to get you started if this is your first Flutter project:
+- v0.1.3
+  - 윈도우 버그 고쳤습니다. 여전히 윈도우에서 성능은 후지지만, '사용 가능한 수준'이 되었습니다.
+  - 쓸데없이 윈도우에서 화면 켜기 옵션 나오던 것을 없앴습니다.
+  - 앱을 실행하면 우측 하단에 버전 문자열이 표시됩니다.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 향후 계획
+- 충분히 많이 잡아당기면 다른 캐릭터가 해금. 우선 밀키웨이 중심.
+  - 꿈틀님과 밀키웨이의 적당한 추가 음성 소스(가만히 있을때 중얼거리는 음성 몇개, 볼따구 잡아당긴 후 비명, 혹은 욕설) 제보 받습니다;;; (여기다 댓글로 남겨주시면 감사..) 
+- 그 외에도 다른 요소들이 있으면 좋겠지만, 지금은 아이디어가 없어서;;; 아이디어도 댓글 남겨주시면 감사하겠습니다... 다만, 저도 일해서 먹고 사는 사람이라, 시간이 없으면 못할 가능성이 높습니다. 간단한건 적용 가능할 수도 있습니다.
