@@ -22,14 +22,15 @@ class MainCharacter extends PositionComponent
     with DragCallbacks, HasGameReference<FlameGame> {
   MainCharacter({
     required this.game,
-    required this.characterInfo,
-  });
+    required CharacterInfo characterInfo,
+  }) : _characterInfo = characterInfo;
 
   @override
   final GgumteulGame game;
 
   /// 캐릭터 정보
-  final CharacterInfo characterInfo;
+  CharacterInfo _characterInfo;
+  CharacterInfo get characterInfo => _characterInfo;
 
   // 상태별 이미지
   late ui.Image _imageIdle1;
@@ -243,6 +244,79 @@ class MainCharacter extends PositionComponent
   Future<ui.Image> _loadImage(String path) async {
     final data = await game.images.load(path);
     return data;
+  }
+
+  /// 캐릭터 변경
+  Future<void> changeCharacter(CharacterInfo newCharacterInfo) async {
+    // 같은 캐릭터면 무시
+    if (_characterInfo.id == newCharacterInfo.id) return;
+
+    // 현재 오디오 중지
+    _stopIdleAudio();
+    _stopReturnAudio();
+
+    // 상태 초기화
+    _state = CharacterState.idle;
+    _isLoaded = false;
+    currentDragOffset = Vector2.zero();
+    rawDragOffset = Vector2.zero();
+    velocity = Vector2.zero();
+    _shakeOffset.setZero();
+    _idleAudioIntervalTimer = 0.0;
+    _idleAnimTimer = 0.0;
+    _idleAnimFrame = false;
+    _cheekReturnAnimTimer = 0.0;
+    _cheekReturnAnimFrame = false;
+    _afterCheekPullTimer = 0.0;
+
+    // 캐릭터 정보 변경
+    _characterInfo = newCharacterInfo;
+
+    // 새 이미지 로드
+    _imageIdle1 = await _loadImage(characterInfo.assets.idle1);
+    _imageIdle2 = await _loadImage(characterInfo.assets.idle2);
+    _imageCheekPulling = await _loadImage(characterInfo.assets.pulling);
+    _imageCheekReturn1 = await _loadImage(characterInfo.assets.return1);
+    _imageCheekReturn2 = await _loadImage(characterInfo.assets.return2);
+
+    // 새 오디오 프리로드
+    await FlameAudio.audioCache.loadAll(characterInfo.audio.allFiles);
+
+    // 화면 크기에 맞게 스케일 재조정
+    final screenSize = game.size;
+    final targetSize = math.min(screenSize.x, screenSize.y) * 0.8;
+    displayScale = targetSize / originalHeight;
+    displayWidth = originalWidth * displayScale;
+    displayHeight = originalHeight * displayScale;
+
+    // 컴포넌트 크기 재설정
+    size = Vector2(displayWidth, displayHeight);
+
+    // 화면 중앙에 재배치
+    position = Vector2(
+      (screenSize.x - displayWidth) / 2,
+      (screenSize.y - displayHeight) / 2,
+    );
+
+    // 볼따구 위치 재계산
+    cheekPosition = Vector2(cheekX * displayScale, cheekY * displayScale);
+    deformCenter = Vector2(
+      deformCenterX * displayScale,
+      deformCenterY * displayScale,
+    );
+
+    // 최대 드래그 거리 재계산
+    maxDragDistance = displayWidth * 0.25;
+
+    // 메시 데이터 재초기화
+    _initMeshData();
+
+    // idle 오디오 타이머 초기화
+    _nextIdleAudioTime =
+        _random.nextDouble() * (idleAudioIntervalMax - idleAudioIntervalMin) +
+        idleAudioIntervalMin;
+
+    _isLoaded = true;
   }
 
   /// 랜덤 idle 오디오 재생 (lowLatency 모드 + 타이머 기반 완료 감지)

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'components/main_character.dart';
+import 'models/character_info.dart';
 import 'models/characters.dart' as chars;
 
 class GgumteulGame extends FlameGame {
@@ -21,6 +22,14 @@ class GgumteulGame extends FlameGame {
   bool _envVisible = false;
   bool get isEnvVisible => _envVisible;
   int get pullCount => _character.pullCount;
+
+  /// 현재 캐릭터 정보
+  CharacterInfo get currentMainCharacter => _character.characterInfo;
+
+  /// 메인 캐릭터 변경
+  Future<void> changeMainCharacter(CharacterInfo newCharacter) async {
+    await _character.changeCharacter(newCharacter);
+  }
 
   @override
   Color backgroundColor() => const Color.fromARGB(255, 130, 107, 94);
@@ -60,7 +69,10 @@ class GgumteulGame extends FlameGame {
     )..sprite?.paint.filterQuality = FilterQuality.high;
     _fitCover(_env2);
 
-    _character = MainCharacter(game: this, characterInfo: chars.Characters.defaultCharacter);
+    _character = MainCharacter(
+      game: this,
+      characterInfo: chars.Characters.defaultCharacter,
+    );
     await add(_character);
 
     if (_envVisible) {
