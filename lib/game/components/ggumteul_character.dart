@@ -20,15 +20,15 @@ class AudioInfo {
 /// 오디오 에셋 정보
 class GgumteulAudio {
   static const idleAudio1 = AudioInfo(
-    'ggumteul/ujaja1.wav',
+    'ggumteul/idle1.wav',
     Duration(milliseconds: 2159),
   );
   static const idleAudio2 = AudioInfo(
-    'ggumteul/ujaja2.wav',
+    'ggumteul/idle2.wav',
     Duration(milliseconds: 1621),
   );
   static const returnAudio1 = AudioInfo(
-    'ggumteul/aww.wav',
+    'ggumteul/return1.wav',
     Duration(milliseconds: 869),
   );
 
@@ -72,9 +72,9 @@ class GgumteulCharacter extends PositionComponent
   double _idleAnimTimer = 0.0;
   bool _idleAnimFrame = false; // false: 01, true: 02
   async.Timer? _idleAudioTimer; // idle 오디오 완료 감지 타이머
-  async.Timer? _returnAudioTimer; // aww 오디오 완료 감지 타이머
+  async.Timer? _returnAudioTimer; // returnAudio 완료 감지 타이머
   AudioPlayer? _idleAudioPlayer; // idle 오디오 플레이어 (중지용)
-  AudioPlayer? _returnAudioPlayer; // return 오디오 플레이어 (중지용)
+  AudioPlayer? _returnAudioPlayer; // returnAudio 플레이어 (중지용)
 
   // cheekReturn 애니메이션
   static const double cheekReturnAnimInterval = 0.12; // 이미지 전환 간격 (초)
@@ -538,7 +538,7 @@ class GgumteulCharacter extends PositionComponent
         // 당김 횟수 카운터 증가
         pullCount++;
         game.prefs.setInt('pullCount', pullCount);
-        // aww 오디오 재생
+        // returnAudio 재생
         _playReturnAudio();
       } else {
         // 충분히 당기지 않았으면 바로 idle로 복귀
