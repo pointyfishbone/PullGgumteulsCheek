@@ -54,16 +54,16 @@ class GgumteulCharacter extends PositionComponent
   static const double shakeIntensity = 3.0; // 떨림 강도 (픽셀)
 
   // 이미지 원본 크기
-  static const double originalWidth = 2700;
-  static const double originalHeight = 2700;
+  static const double originalWidth = 900;
+  static const double originalHeight = 900;
 
   // 볼따구 위치 - 드래그 감지용 (원본 이미지 기준)
-  static const double cheekX = 2500;
-  static const double cheekY = 1500;
+  static const double cheekX = 833.33;
+  static const double cheekY = 500;
 
   // 메시 변형 중심점 (원본 이미지 기준)
-  static const double deformCenterX = 2620;
-  static const double deformCenterY = 1448;
+  static const double deformCenterX = 873.33;
+  static const double deformCenterY = 482.67;
 
   // 화면에 표시될 크기 (스케일 조정)
   late double displayScale;
@@ -101,7 +101,7 @@ class GgumteulCharacter extends PositionComponent
       2.0; // 발산 감지 배수 (maxDragDistance 기준)
 
   // 메시 변형 최적화 (미리 할당)
-  static const int meshGridSize = 20; // 그리드 크기 (20 -> 15로 축소)
+  static const int meshGridSize = 20; // 그리드 크기
   static const int meshVertexCount = (meshGridSize + 1) * (meshGridSize + 1);
   static const int meshIndexCount = meshGridSize * meshGridSize * 6;
   late Float32List _meshVertices;
@@ -183,7 +183,10 @@ class GgumteulCharacter extends PositionComponent
     // 볼따구 위치 계산 (화면 기준) - 드래그 감지용
     cheekPosition = Vector2(cheekX * displayScale, cheekY * displayScale);
     // 메시 변형 중심점 계산 (화면 기준)
-    deformCenter = Vector2(deformCenterX * displayScale, deformCenterY * displayScale);
+    deformCenter = Vector2(
+      deformCenterX * displayScale,
+      deformCenterY * displayScale,
+    );
 
     // 최대 드래그 거리 (이미지 가로 길이의 25%)
     maxDragDistance = displayWidth * 0.25;
