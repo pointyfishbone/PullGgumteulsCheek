@@ -1,3 +1,4 @@
+import 'dart:async' as async;
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -7,6 +8,36 @@ import 'package:flame/game.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:gti_speaki/game/ggumteul_game.dart';
+
+/// 오디오 파일 정보 (파일 이름에서 재생 시간 포함)
+class AudioInfo {
+  final String fileName;
+  final Duration duration;
+
+  const AudioInfo(this.fileName, this.duration);
+}
+
+/// 오디오 에셋 정보
+class GgumteulAudio {
+  static const idleAudio1 = AudioInfo(
+    'ggumteul/ujaja1.wav',
+    Duration(milliseconds: 2159),
+  );
+  static const idleAudio2 = AudioInfo(
+    'ggumteul/ujaja2.wav',
+    Duration(milliseconds: 1621),
+  );
+  static const returnAudio1 = AudioInfo(
+    'ggumteul/aww.wav',
+    Duration(milliseconds: 869),
+  );
+
+  static List<String> get allFiles => [
+    idleAudio1.fileName,
+    idleAudio2.fileName,
+    returnAudio1.fileName,
+  ];
+}
 
 /// 꿈틀 캐릭터의 상태
 enum GgumteulState {
@@ -35,13 +66,15 @@ class GgumteulCharacter extends PositionComponent
   static const double idleAudioIntervalMin = 3.0; // 최소 대기 시간 (초)
   static const double idleAudioIntervalMax = 8.0; // 최대 대기 시간 (초)
   static const double idleAnimInterval = 0.12; // 이미지 전환 간격 (초, 120ms)
-  double _idleAudioTimer = 0.0;
+  double _idleAudioIntervalTimer = 0.0;
   double _nextIdleAudioTime = 0.0;
   bool _isPlayingIdleAudio = false;
   double _idleAnimTimer = 0.0;
   bool _idleAnimFrame = false; // false: 01, true: 02
-  AudioPlayer? _idleAudioPlayer; // 현재 재생 중인 idle 오디오 플레이어
-  AudioPlayer? _awwAudioPlayer; // 볼 당기기 성공 시 재생되는 오디오 플레이어
+  async.Timer? _idleAudioTimer; // idle 오디오 완료 감지 타이머
+  async.Timer? _returnAudioTimer; // aww 오디오 완료 감지 타이머
+  AudioPlayer? _idleAudioPlayer; // idle 오디오 플레이어 (중지용)
+  AudioPlayer? _returnAudioPlayer; // return 오디오 플레이어 (중지용)
 
   // cheekReturn 애니메이션
   static const double cheekReturnAnimInterval = 0.12; // 이미지 전환 간격 (초)
@@ -152,12 +185,8 @@ class GgumteulCharacter extends PositionComponent
     );
     _isLoaded = true;
 
-    // 오디오 프리로드
-    await FlameAudio.audioCache.loadAll([
-      'ggumteul/ujaja1.wav',
-      'ggumteul/ujaja2.wav',
-      'ggumteul/aww.wav',
-    ]);
+    // 오디오 프리로드 (lowLatency 모드를 위해 미리 로드)
+    await FlameAudio.audioCache.loadAll(GgumteulAudio.allFiles);
 
     // idle 오디오 타이머 초기화 (3~8초 랜덤)
     _nextIdleAudioTime =
@@ -245,38 +274,38 @@ class GgumteulCharacter extends PositionComponent
     return data;
   }
 
-  /// 랜덤 idle 오디오 재생
-  Future<void> _playRandomIdleAudio() async {
+  /// 랜덤 idle 오디오 재생 (lowLatency 모드 + 타이머 기반 완료 감지)
+  void _playRandomIdleAudio() async {
     _isPlayingIdleAudio = true;
     _idleAnimTimer = 0.0;
     _idleAnimFrame = false;
 
-    // ujaja1.wav 또는 ujaja2.wav 중 랜덤 선택
-    final audioFile = _random.nextBool() ? 'ujaja1.wav' : 'ujaja2.wav';
+    // idle1 또는 idle2 중 랜덤 선택
+    final audio = _random.nextBool()
+        ? GgumteulAudio.idleAudio1
+        : GgumteulAudio.idleAudio2;
 
-    // MediaPlayer 모드로 명시적 설정 (low latency 모드에서 onPlayerComplete 문제 해결)
-    final player = AudioPlayer();
-    _idleAudioPlayer = player;
-    player.onPlayerComplete.listen((_) {
-      _onIdleAudioComplete();
-    });
-    await player.play(
-      AssetSource('audio/ggumteul/$audioFile'),
-      mode: PlayerMode.mediaPlayer,
-    );
+    // lowLatency 모드로 재생 (프리로드된 오디오 사용)
+    _idleAudioPlayer = await FlameAudio.play(audio.fileName);
+
+    // 파일 이름에 기록된 재생 시간으로 완료 감지
+    _idleAudioTimer = async.Timer(audio.duration, _onIdleAudioComplete);
   }
 
   /// idle 오디오 중지
   void _stopIdleAudio() {
+    _idleAudioTimer?.cancel();
+    _idleAudioTimer = null;
     _idleAudioPlayer?.stop();
     _idleAudioPlayer = null;
     _isPlayingIdleAudio = false;
     _idleAnimFrame = false;
-    _idleAudioTimer = 0.0;
+    _idleAudioIntervalTimer = 0.0;
   }
 
   /// idle 오디오 재생 완료 시 호출
   void _onIdleAudioComplete() {
+    _idleAudioTimer = null;
     _idleAudioPlayer = null;
     _isPlayingIdleAudio = false;
     _idleAnimFrame = false;
@@ -286,31 +315,35 @@ class GgumteulCharacter extends PositionComponent
         idleAudioIntervalMin;
   }
 
-  /// aww 오디오 재생 (볼 당기기 성공 시)
-  Future<void> _playAwwAudio() async {
-    _stopAwwAudio(); // 기존 재생 중지
+  /// returnAudio 오디오 재생 (볼 당기기 성공 시, lowLatency 모드)
+  void _playReturnAudio() async {
+    _stopReturnAudio(); // 기존 타이머 및 오디오 중지
 
-    final player = AudioPlayer();
-    _awwAudioPlayer = player;
-    player.onPlayerComplete.listen((_) {
-      _onAwwAudioComplete();
-    });
-    await player.play(
-      AssetSource('audio/ggumteul/aww.wav'),
-      mode: PlayerMode.mediaPlayer,
+    // lowLatency 모드로 재생
+    _returnAudioPlayer = await FlameAudio.play(
+      GgumteulAudio.returnAudio1.fileName,
+    );
+
+    // 파일 이름에 기록된 재생 시간으로 완료 감지
+    _returnAudioTimer = async.Timer(
+      GgumteulAudio.returnAudio1.duration,
+      _onReturnAudioComplete,
     );
   }
 
-  /// aww 오디오 중지
-  void _stopAwwAudio() {
-    _awwAudioPlayer?.stop();
-    _awwAudioPlayer = null;
+  /// returnAudio 중지
+  void _stopReturnAudio() {
+    _returnAudioTimer?.cancel();
+    _returnAudioTimer = null;
+    _returnAudioPlayer?.stop();
+    _returnAudioPlayer = null;
   }
 
-  /// aww 오디오 재생 완료 시 호출
-  void _onAwwAudioComplete() {
-    _awwAudioPlayer = null;
-    // cheekReturn 상태에서 aww 오디오가 끝나면 afterCheekPull로 전이
+  /// returnAudio 재생 완료 시 호출
+  void _onReturnAudioComplete() {
+    _returnAudioTimer = null;
+    _returnAudioPlayer = null;
+    // cheekReturn 상태에서 returnAudio가 끝나면 afterCheekPull로 전이
     if (_state == GgumteulState.cheekReturn) {
       _state = GgumteulState.afterCheekPull;
       _afterCheekPullTimer = 0.0;
@@ -335,9 +368,9 @@ class GgumteulCharacter extends PositionComponent
           }
         } else {
           // 오디오 미재생: 타이머 체크
-          _idleAudioTimer += dt;
-          if (_idleAudioTimer >= _nextIdleAudioTime) {
-            _idleAudioTimer = 0.0;
+          _idleAudioIntervalTimer += dt;
+          if (_idleAudioIntervalTimer >= _nextIdleAudioTime) {
+            _idleAudioIntervalTimer = 0.0;
             _playRandomIdleAudio();
           }
         }
@@ -397,7 +430,7 @@ class GgumteulCharacter extends PositionComponent
             velocity = Vector2.zero();
           }
         }
-        // afterCheekPull로의 전이는 aww 오디오 완료 시 _onAwwAudioComplete()에서 처리
+        // afterCheekPull로의 전이는 returnAudio 완료 시 _onReturnAudioComplete()에서 처리
         break;
 
       case GgumteulState.afterCheekPull:
@@ -425,7 +458,7 @@ class GgumteulCharacter extends PositionComponent
     if (distanceFromCheek < 200 * displayScale) {
       // 오디오 중지
       _stopIdleAudio();
-      _stopAwwAudio();
+      _stopReturnAudio();
 
       _state = GgumteulState.cheekPulling;
       rawDragOffset = currentDragOffset.clone(); // 현재 위치에서 시작
@@ -506,7 +539,7 @@ class GgumteulCharacter extends PositionComponent
         pullCount++;
         game.prefs.setInt('pullCount', pullCount);
         // aww 오디오 재생
-        _playAwwAudio();
+        _playReturnAudio();
       } else {
         // 충분히 당기지 않았으면 바로 idle로 복귀
         _state = GgumteulState.idle;
