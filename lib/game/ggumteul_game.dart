@@ -142,7 +142,7 @@ class GgumteulGame extends FlameGame {
 
     // 메인 캐릭터 크기의 35%
     final mainSize = math.min(size.x, size.y) * 0.8;
-    final subSize = mainSize * 0.35;
+    final subSize = mainSize * 0.45;
 
     // 메인 캐릭터의 화면 중심 위치 및 크기 (충돌 감지용)
     final mainDisplaySize = Vector2(
