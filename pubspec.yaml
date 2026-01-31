@@ -68,9 +68,11 @@ flutter:
   assets:
     - assets/images/ggumteul/
     - assets/images/mir/
+    - assets/images/marronie/
     - assets/images/env/
     - assets/audio/ggumteul/
     - assets/audio/mir/
+    - assets/audio/marronie/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

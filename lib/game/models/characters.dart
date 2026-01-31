@@ -87,11 +87,11 @@ class Characters {
     id: 'marronie',
     name: '마로니',
     assets: CharacterAssets(
-      idle1: 'ggumteul/ggumteul_01.png',
-      idle2: 'ggumteul/ggumteul_02.png',
-      return1: 'ggumteul/ggumteul_03.png',
-      return2: 'ggumteul/ggumteul_04.png',
-      pulling: 'ggumteul/ggumteul_07.png',
+      idle1: 'marronie/marronie_01.png',
+      idle2: 'marronie/marronie_02.png',
+      return1: 'marronie/marronie_03.png',
+      return2: 'marronie/marronie_04.png',
+      pulling: 'marronie/marronie_07.png',
     ),
     audio: CharacterAudioInfo(
       idle1: AudioInfo('ggumteul/idle1.wav', Duration(milliseconds: 2159)),
