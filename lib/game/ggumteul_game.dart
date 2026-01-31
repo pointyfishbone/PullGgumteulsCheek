@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -125,6 +126,9 @@ class GgumteulGame extends FlameGame {
 
     // 서브 캐릭터 생성 (해금된 캐릭터만)
     await _createSubCharacters();
+
+    // BGM 재생 (환경음)
+    FlameAudio.bgm.play('env/birds-isaiah658.ogg', volume: 0.45);
 
     overlays.add('pullCounter');
     overlays.add('settingsHud');

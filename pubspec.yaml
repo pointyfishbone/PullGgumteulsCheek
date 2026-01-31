@@ -71,6 +71,7 @@ flutter:
     - assets/images/mir/
     - assets/images/marronie/
     - assets/images/eze/
+    - assets/audio/env/
     - assets/audio/ggumteul/
     - assets/audio/mir/
     - assets/audio/marronie/

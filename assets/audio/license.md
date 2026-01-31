@@ -1,0 +1,2 @@
+- thwack (no. 1): CC0. https://opengameart.org/content/thwack-sounds
+- Ambient Bird Sounds: https://opengameart.org/content/ambient-bird-sounds
