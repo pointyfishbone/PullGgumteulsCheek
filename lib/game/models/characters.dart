@@ -61,11 +61,11 @@ class Characters {
     id: 'eze',
     name: '윤이제',
     assets: CharacterAssets(
-      idle1: 'ggumteul/ggumteul_01.png',
-      idle2: 'ggumteul/ggumteul_02.png',
-      return1: 'ggumteul/ggumteul_03.png',
-      return2: 'ggumteul/ggumteul_04.png',
-      pulling: 'ggumteul/ggumteul_07.png',
+      idle1: 'eze/eze_01.png',
+      idle2: 'eze/eze_02.png',
+      return1: 'eze/eze_03.png',
+      return2: 'eze/eze_04.png',
+      pulling: 'eze/eze_07.png',
     ),
     audio: CharacterAudioInfo(
       idle1: AudioInfo('ggumteul/idle1.wav', Duration(milliseconds: 2159)),
