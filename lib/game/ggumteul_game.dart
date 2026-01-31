@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'components/main_character.dart';
+import 'components/sub_character.dart';
 import 'models/character_info.dart';
 import 'models/characters.dart' as chars;
 
@@ -15,12 +15,13 @@ class GgumteulGame extends FlameGame {
   late final PackageInfo _packageInfo;
   PackageInfo get packageInfo => _packageInfo;
 
-  late final MainCharacter _character;
-  late final SpriteComponent _env1;
-  late final SpriteComponent _env2;
+  late MainCharacter _character;
+  MainCharacter? get mainCharacterComponent => _character;
 
-  bool _envVisible = false;
-  bool get isEnvVisible => _envVisible;
+  final List<SubCharacter> _subCharacters = [];
+  List<SubCharacter> get subCharacters => _subCharacters;
+  final math.Random _random = math.Random();
+
   int get pullCount => _character.pullCount;
 
   /// 현재 캐릭터 정보
@@ -29,6 +30,7 @@ class GgumteulGame extends FlameGame {
   /// 메인 캐릭터 변경
   Future<void> changeMainCharacter(CharacterInfo newCharacter) async {
     await _character.changeCharacter(newCharacter);
+    await _updateSubCharacters();
   }
 
   @override
@@ -38,36 +40,8 @@ class GgumteulGame extends FlameGame {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // SharedPreferences 로드
     _prefs = await SharedPreferences.getInstance();
-
-    // PackageInfo 로드
     _packageInfo = await PackageInfo.fromPlatform();
-
-    // _envVisible 로드
-    _envVisible = _prefs.getBool('envVisible') ?? false;
-
-    // 환경 이미지 로드
-    final envSprite1 = await loadSprite('env/mir.png');
-    final envSprite2 = await loadSprite('env/ije_maroni.png');
-
-    // 전체 화면 환경 컴포넌트 생성
-    _env1 = SpriteComponent(
-      sprite: envSprite1,
-      size: size,
-      position: size / 2,
-      anchor: Anchor.center,
-      priority: -10,
-    )..sprite?.paint.filterQuality = FilterQuality.high;
-    _fitCover(_env1);
-    _env2 = SpriteComponent(
-      sprite: envSprite2,
-      size: size,
-      position: size / 2,
-      anchor: Anchor.center,
-      priority: 10,
-    )..sprite?.paint.filterQuality = FilterQuality.high;
-    _fitCover(_env2);
 
     _character = MainCharacter(
       game: this,
@@ -75,40 +49,117 @@ class GgumteulGame extends FlameGame {
     );
     await add(_character);
 
-    if (_envVisible) {
-      await add(_env1);
-      await add(_env2);
-    }
+    // 서브 캐릭터 생성
+    await _createSubCharacters();
 
     overlays.add('pullCounter');
     overlays.add('settingsHud');
   }
 
-  Future<void> toggleEnv(bool visible) async {
-    _envVisible = visible;
-    await _prefs.setBool('envVisible', visible);
+  /// 서브 캐릭터 생성 (메인 캐릭터가 아닌 캐릭터들)
+  Future<void> _createSubCharacters() async {
+    final subCharInfos = chars.Characters.all
+        .where((c) => c.id != currentMainCharacter.id)
+        .toList();
 
-    if (visible && !_env1.isMounted) {
-      add(_env1);
-    } else if (!visible && _env1.isMounted) {
-      _env1.removeFromParent();
-    }
+    // 메인 캐릭터 크기의 35%
+    final mainSize = math.min(size.x, size.y) * 0.8;
+    final subSize = mainSize * 0.35;
 
-    if (visible && !_env2.isMounted) {
-      add(_env2);
-    } else if (!visible && _env2.isMounted) {
-      _env2.removeFromParent();
+    // 메인 캐릭터의 화면 중심 위치 및 크기 (충돌 감지용)
+    final mainDisplaySize = Vector2(
+      _character.characterInfo.imageMeta.width /
+          _character.characterInfo.imageMeta.height *
+          mainSize,
+      mainSize,
+    );
+    final mainTopLeft = Vector2(
+      (size.x - mainDisplaySize.x) / 2,
+      (size.y - mainDisplaySize.y) / 2,
+    );
+    final mainRect = Rect.fromLTWH(
+      mainTopLeft.x,
+      mainTopLeft.y,
+      mainDisplaySize.x,
+      mainDisplaySize.y,
+    );
+
+    // 서브 캐릭터 위치 결정 (겹치지 않게)
+    final positions = _generateNonOverlappingPositions(
+      count: subCharInfos.length,
+      subSize: subSize,
+      mainRect: mainRect,
+    );
+
+    for (int i = 0; i < subCharInfos.length; i++) {
+      final sub = SubCharacter(
+        ggumteulGame: this,
+        characterInfo: subCharInfos[i],
+      );
+      sub.size = Vector2.all(subSize);
+      sub.position = positions[i];
+      _subCharacters.add(sub);
+      await add(sub);
     }
   }
 
-  void _fitCover(SpriteComponent c) {
-    final imgSize = c.sprite!.srcSize;
-    final screen = size;
+  /// 메인 캐릭터 변경 시 서브 캐릭터 업데이트
+  Future<void> _updateSubCharacters() async {
+    // 기존 서브 캐릭터 제거
+    for (final sub in _subCharacters) {
+      sub.removeFromParent();
+    }
+    _subCharacters.clear();
 
-    final scale = math.max(screen.x / imgSize.x, screen.y / imgSize.y);
+    // 새로운 서브 캐릭터 생성
+    await _createSubCharacters();
+  }
 
-    c
-      ..size = imgSize * scale
-      ..position = screen / 2;
+  /// 겹치지 않는 위치 생성
+  List<Vector2> _generateNonOverlappingPositions({
+    required int count,
+    required double subSize,
+    required Rect mainRect,
+  }) {
+    final positions = <Vector2>[];
+    final placedRects = <Rect>[mainRect];
+
+    // 화면 여백
+    const margin = 10.0;
+
+    for (int i = 0; i < count; i++) {
+      Vector2? pos;
+
+      // 최대 100번 시도
+      for (int attempt = 0; attempt < 100; attempt++) {
+        final x = margin + _random.nextDouble() * (size.x - subSize - margin * 2);
+        final y = margin + _random.nextDouble() * (size.y - subSize - margin * 2);
+        final candidateRect = Rect.fromLTWH(x, y, subSize, subSize);
+
+        bool overlaps = false;
+        for (final placed in placedRects) {
+          if (candidateRect.overlaps(placed)) {
+            overlaps = true;
+            break;
+          }
+        }
+
+        if (!overlaps) {
+          pos = Vector2(x, y);
+          placedRects.add(candidateRect);
+          break;
+        }
+      }
+
+      // 100번 시도 후에도 겹치지 않는 위치를 못 찾으면 화면 가장자리에 배치
+      pos ??= Vector2(
+        margin + i * (subSize + margin),
+        margin,
+      );
+
+      positions.add(pos);
+    }
+
+    return positions;
   }
 }

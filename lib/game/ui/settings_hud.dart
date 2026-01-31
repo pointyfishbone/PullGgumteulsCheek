@@ -14,13 +14,11 @@ class SettingsHud extends StatefulWidget {
 }
 
 class _SettingsHudState extends State<SettingsHud> {
-  late bool _envValue;
   late bool _screenOnValue;
 
   @override
   void initState() {
     super.initState();
-    _envValue = widget.game.isEnvVisible;
     _screenOnValue = widget.game.prefs.getBool('screenOn') ?? false;
 
     // 저장된 상태에 따라 wakelock 설정
@@ -72,24 +70,6 @@ class _SettingsHudState extends State<SettingsHud> {
                     ),
                   ],
                 ),
-              // Environment 스위치
-              Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Environment',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  Switch(
-                    value: _envValue,
-                    onChanged: (v) {
-                      setState(() => _envValue = v);
-                      widget.game.toggleEnv(v);
-                    },
-                  ),
-                ],
-              ),
             ],
           ),
         ),

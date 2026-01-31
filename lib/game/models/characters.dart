@@ -56,8 +56,60 @@ class Characters {
     ),
   );
 
+  /// 이제 캐릭터 (임시: 꿈틀이 에셋 사용)
+  static const eze = CharacterInfo(
+    id: 'eze',
+    name: '이제',
+    assets: CharacterAssets(
+      idle1: 'ggumteul/ggumteul_01.png',
+      idle2: 'ggumteul/ggumteul_02.png',
+      return1: 'ggumteul/ggumteul_03.png',
+      return2: 'ggumteul/ggumteul_04.png',
+      pulling: 'ggumteul/ggumteul_07.png',
+    ),
+    audio: CharacterAudioInfo(
+      idle1: AudioInfo('ggumteul/idle1.wav', Duration(milliseconds: 2159)),
+      idle2: AudioInfo('ggumteul/idle2.wav', Duration(milliseconds: 1621)),
+      return1: AudioInfo('ggumteul/return1.wav', Duration(milliseconds: 869)),
+    ),
+    imageMeta: CharacterImageMeta(
+      width: 900,
+      height: 900,
+      cheekX: 833.33,
+      cheekY: 500,
+      deformCenterX: 873.33,
+      deformCenterY: 482.67,
+    ),
+  );
+
+  /// 마로니 캐릭터 (임시: 꿈틀이 에셋 사용)
+  static const marronie = CharacterInfo(
+    id: 'marronie',
+    name: '마로니',
+    assets: CharacterAssets(
+      idle1: 'ggumteul/ggumteul_01.png',
+      idle2: 'ggumteul/ggumteul_02.png',
+      return1: 'ggumteul/ggumteul_03.png',
+      return2: 'ggumteul/ggumteul_04.png',
+      pulling: 'ggumteul/ggumteul_07.png',
+    ),
+    audio: CharacterAudioInfo(
+      idle1: AudioInfo('ggumteul/idle1.wav', Duration(milliseconds: 2159)),
+      idle2: AudioInfo('ggumteul/idle2.wav', Duration(milliseconds: 1621)),
+      return1: AudioInfo('ggumteul/return1.wav', Duration(milliseconds: 869)),
+    ),
+    imageMeta: CharacterImageMeta(
+      width: 900,
+      height: 900,
+      cheekX: 833.33,
+      cheekY: 500,
+      deformCenterX: 873.33,
+      deformCenterY: 482.67,
+    ),
+  );
+
   /// 모든 캐릭터 목록
-  static const List<CharacterInfo> all = [ggumteul, mir];
+  static const List<CharacterInfo> all = [ggumteul, mir, eze, marronie];
 
   /// 기본 캐릭터
   static const CharacterInfo defaultCharacter = ggumteul;
