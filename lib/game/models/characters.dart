@@ -42,9 +42,9 @@ class Characters {
       pulling: 'mir/mir_7.png',
     ),
     audio: CharacterAudioInfo(
-      idle1: AudioInfo('mir/idle1.wav', Duration(milliseconds: 2159)),
-      idle2: AudioInfo('mir/idle2.wav', Duration(milliseconds: 1621)),
-      return1: AudioInfo('mir/return1.wav', Duration(milliseconds: 869)),
+      idle1: AudioInfo('mir/idle1.wav', Duration(milliseconds: 10886)),
+      idle2: AudioInfo('mir/idle2.wav', Duration(milliseconds: 12919)),
+      return1: AudioInfo('mir/return1.wav', Duration(milliseconds: 4074)),
     ),
     imageMeta: CharacterImageMeta(
       width: 900,

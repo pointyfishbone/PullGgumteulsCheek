@@ -20,10 +20,8 @@ enum CharacterState {
 
 class MainCharacter extends PositionComponent
     with DragCallbacks, HasGameReference<FlameGame> {
-  MainCharacter({
-    required this.game,
-    required CharacterInfo characterInfo,
-  }) : _characterInfo = characterInfo;
+  MainCharacter({required this.game, required CharacterInfo characterInfo})
+    : _characterInfo = characterInfo;
 
   @override
   final GgumteulGame game;
@@ -105,7 +103,7 @@ class MainCharacter extends PositionComponent
 
   // 스프링 물리 (오버슛이 있는 빠른 복귀)
   Vector2 velocity = Vector2.zero();
-  static const double springStiffness = 1300.0; // 스프링 강성 (높을수록 빠름)
+  static const double springStiffness = 1800.0; // 스프링 강성 (높을수록 빠름)
   static const double damping = 30.0; // 감쇠 (낮을수록 오버슛 큼)
   static const double maxPhysicsDt = 0.016; // 물리 시뮬레이션 최대 dt (약 60fps)
   static const double maxDivergenceDistance =
