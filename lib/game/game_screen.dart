@@ -1,5 +1,6 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:gti_speaki/game/ui/invite_friend_popup.dart';
 import 'package:gti_speaki/game/ui/pull_counter.dart';
 import 'package:gti_speaki/game/ui/settings_hud.dart';
 
@@ -29,6 +30,9 @@ class GameScreen extends StatelessWidget {
               bottom: 16,
               child: SettingsHud(game: game),
             );
+          },
+          'inviteFriend': (context, GgumteulGame game) {
+            return InviteFriendPopup(game: game);
           },
         },
       ),

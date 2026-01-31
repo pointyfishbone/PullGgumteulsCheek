@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
+import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:gti_speaki/game/components/main_character.dart';
@@ -10,7 +11,7 @@ import 'package:gti_speaki/game/models/character_info.dart';
 
 /// 메인 캐릭터 주변에 표시되는 서브 캐릭터
 class SubCharacter extends PositionComponent
-    with HasGameReference<FlameGame> {
+    with HasGameReference<FlameGame>, TapCallbacks {
   SubCharacter({
     required this.ggumteulGame,
     required CharacterInfo characterInfo,
@@ -201,5 +202,12 @@ class SubCharacter extends PositionComponent
 
     canvas.drawImageRect(image, srcRect, dstRect, Paint());
     canvas.restore();
+  }
+
+  @override
+  void onTapUp(TapUpEvent event) {
+    super.onTapUp(event);
+    // 서브 캐릭터를 탭하면 메인 캐릭터로 교체
+    ggumteulGame.changeMainCharacter(_characterInfo);
   }
 }

@@ -7,7 +7,7 @@ class Characters {
   /// 꿈틀이 캐릭터
   static const ggumteul = CharacterInfo(
     id: 'ggumteul',
-    name: '꿈틀이',
+    name: '꿈틀',
     assets: CharacterAssets(
       idle1: 'ggumteul/ggumteul_01.png',
       idle2: 'ggumteul/ggumteul_02.png',
@@ -59,7 +59,7 @@ class Characters {
   /// 이제 캐릭터 (임시: 꿈틀이 에셋 사용)
   static const eze = CharacterInfo(
     id: 'eze',
-    name: '이제',
+    name: '윤이제',
     assets: CharacterAssets(
       idle1: 'ggumteul/ggumteul_01.png',
       idle2: 'ggumteul/ggumteul_02.png',

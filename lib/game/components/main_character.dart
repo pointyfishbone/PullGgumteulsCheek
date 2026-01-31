@@ -119,8 +119,6 @@ class MainCharacter extends PositionComponent
   late Float64List _identityMatrix;
   late double _meshInfluenceRadius;
 
-  // 볼따구 당김 횟수 카운터
-  int pullCount = 0;
 
   /// 현재 상태에 맞는 이미지 반환
   ui.Image get _currentImage {
@@ -143,9 +141,6 @@ class MainCharacter extends PositionComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-
-    // pullCount 로드
-    pullCount = game.prefs.getInt('pullCount') ?? 0;
 
     // 상태별 이미지 로드 (CharacterInfo에서 경로 가져오기)
     _imageIdle1 = await _loadImage(characterInfo.assets.idle1);
@@ -579,8 +574,7 @@ class MainCharacter extends PositionComponent
         _cheekReturnAnimFrame = false; // 첫 번째 프레임부터 시작
         // 스프링 복귀는 update()에서 자동으로 처리됨
         // 당김 횟수 카운터 증가
-        pullCount++;
-        game.prefs.setInt('pullCount', pullCount);
+        game.incrementPullCount();
         // returnAudio 재생
         _playReturnAudio();
       } else {
