@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -14,6 +15,8 @@ class GgumteulGame extends FlameGame {
   SharedPreferences get prefs => _prefs;
   late final PackageInfo _packageInfo;
   PackageInfo get packageInfo => _packageInfo;
+
+  late final SpriteComponent _bg;
 
   late MainCharacter _character;
   MainCharacter? get mainCharacterComponent => _character;
@@ -43,6 +46,18 @@ class GgumteulGame extends FlameGame {
     _prefs = await SharedPreferences.getInstance();
     _packageInfo = await PackageInfo.fromPlatform();
 
+    // 전체 화면 배경 컴포넌트 생성
+    final bgSprite = await loadSprite('env/bg.png');
+    _bg = SpriteComponent(
+      sprite: bgSprite,
+      size: size,
+      position: size / 2,
+      anchor: Anchor.center,
+      priority: -10,
+    )..sprite?.paint.filterQuality = FilterQuality.high;
+    await add(_bg);
+
+    // 메인 캐릭터 생성
     _character = MainCharacter(
       game: this,
       characterInfo: chars.Characters.defaultCharacter,
@@ -132,8 +147,10 @@ class GgumteulGame extends FlameGame {
 
       // 최대 100번 시도
       for (int attempt = 0; attempt < 100; attempt++) {
-        final x = margin + _random.nextDouble() * (size.x - subSize - margin * 2);
-        final y = margin + _random.nextDouble() * (size.y - subSize - margin * 2);
+        final x =
+            margin + _random.nextDouble() * (size.x - subSize - margin * 2);
+        final y =
+            margin + _random.nextDouble() * (size.y - subSize - margin * 2);
         final candidateRect = Rect.fromLTWH(x, y, subSize, subSize);
 
         bool overlaps = false;
@@ -152,10 +169,7 @@ class GgumteulGame extends FlameGame {
       }
 
       // 100번 시도 후에도 겹치지 않는 위치를 못 찾으면 화면 가장자리에 배치
-      pos ??= Vector2(
-        margin + i * (subSize + margin),
-        margin,
-      );
+      pos ??= Vector2(margin + i * (subSize + margin), margin);
 
       positions.add(pos);
     }
