@@ -6,6 +6,7 @@ import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'components/butterfly.dart';
 import 'components/main_character.dart';
 import 'components/sub_character.dart';
 import 'models/character_info.dart';
@@ -127,8 +128,12 @@ class GgumteulGame extends FlameGame {
     // 서브 캐릭터 생성 (해금된 캐릭터만)
     await _createSubCharacters();
 
+    // 나비 생성
+    final butterfly = Butterfly(ggumteulGame: this)..priority = 15;
+    await add(butterfly);
+
     // BGM 재생 (환경음)
-    FlameAudio.bgm.play('env/birds-isaiah658.ogg', volume: 0.45);
+    FlameAudio.bgm.play('env/birds-isaiah658.ogg', volume: 0.3);
 
     overlays.add('pullCounter');
     overlays.add('settingsHud');
