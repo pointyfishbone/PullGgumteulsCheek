@@ -31,7 +31,7 @@ class GgumteulGame extends FlameGame {
   int get pullCount => _pullCount;
 
   /// 해금에 필요한 pullCount 임계값 목록 (변경하기 쉽게 리스트로 관리)
-  static const List<int> unlockThresholds = [200, 400, 600];
+  static const List<int> unlockThresholds = [100, 200, 300];
 
   // --- 해금 시스템 ---
   final Set<String> _unlockedIds = {};
