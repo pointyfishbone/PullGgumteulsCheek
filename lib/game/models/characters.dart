@@ -94,9 +94,9 @@ class Characters {
       pulling: 'marronie/marronie_07.png',
     ),
     audio: CharacterAudioInfo(
-      idle1: AudioInfo('ggumteul/idle1.wav', Duration(milliseconds: 2159)),
-      idle2: AudioInfo('ggumteul/idle2.wav', Duration(milliseconds: 1621)),
-      return1: AudioInfo('ggumteul/return1.wav', Duration(milliseconds: 869)),
+      idle1: AudioInfo('marronie/idle1.wav', Duration(milliseconds: 13748)),
+      idle2: AudioInfo('marronie/idle2.wav', Duration(milliseconds: 6703)),
+      return1: AudioInfo('marronie/return1.wav', Duration(milliseconds: 804)),
     ),
     imageMeta: CharacterImageMeta(
       width: 900,
