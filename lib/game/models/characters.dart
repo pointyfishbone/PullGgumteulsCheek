@@ -68,9 +68,9 @@ class Characters {
       pulling: 'eze/eze_07.png',
     ),
     audio: CharacterAudioInfo(
-      idle1: AudioInfo('ggumteul/idle1.wav', Duration(milliseconds: 2159)),
-      idle2: AudioInfo('ggumteul/idle2.wav', Duration(milliseconds: 1621)),
-      return1: AudioInfo('ggumteul/return1.wav', Duration(milliseconds: 869)),
+      idle1: AudioInfo('eze/idle1.wav', Duration(milliseconds: 15694)),
+      idle2: AudioInfo('eze/idle2.wav', Duration(milliseconds: 16000)),
+      return1: AudioInfo('eze/return1.wav', Duration(milliseconds: 655)),
     ),
     imageMeta: CharacterImageMeta(
       width: 900,
