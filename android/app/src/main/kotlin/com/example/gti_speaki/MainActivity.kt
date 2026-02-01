@@ -1,4 +1,4 @@
-package com.example.gti_speaki
+package dev.fishbone.pullGgumteulCheek
 
 import io.flutter.embedding.android.FlutterActivity
 

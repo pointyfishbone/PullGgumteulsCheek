@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.gti_speaki"
+    namespace = "dev.fishbone.pullGgumteulCheek"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
